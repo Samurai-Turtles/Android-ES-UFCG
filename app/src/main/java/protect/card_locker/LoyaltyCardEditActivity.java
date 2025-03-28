@@ -70,7 +70,6 @@ import java.math.BigDecimal;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Currency;
 import java.util.Date;
@@ -82,6 +81,10 @@ import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 import protect.card_locker.async.TaskHandler;
 import protect.card_locker.databinding.LayoutChipChoiceBinding;
@@ -1313,13 +1316,18 @@ public class LoyaltyCardEditActivity extends CatimaAppCompatActivity implements 
 
     private void showDatePicker(
             LoyaltyCardField loyaltyCardField,
-            @Nullable Date selectedDate,
-            @Nullable Date minDate,
-            @Nullable Date maxDate
+            @Nullable LocalDateTime selectedDate,
+            @Nullable LocalDateTime minDate,
+            @Nullable LocalDateTime maxDate
     ) {
-        // Create a new instance of MaterialDatePicker and return it
-        long startDate = minDate != null ? minDate.getTime() : getDefaultMinDateOfDatePicker();
-        long endDate = maxDate != null ? maxDate.getTime() : getDefaultMaxDateOfDatePicker();
+        // Converte LocalDateTime para epoch millis
+        long startDate = (minDate != null)
+                ? minDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                : getDefaultMinDateOfDatePicker();
+
+        long endDate = (maxDate != null)
+                ? maxDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                : getDefaultMaxDateOfDatePicker();
 
         CalendarConstraints.DateValidator dateValidator;
         switch (loyaltyCardField) {
@@ -1339,11 +1347,11 @@ public class LoyaltyCardEditActivity extends CatimaAppCompatActivity implements 
                 .setEnd(endDate)
                 .build();
 
-        // Use the selected date as the default date in the picker
-        final Calendar calendar = Calendar.getInstance();
-        if (selectedDate != null) {
-            calendar.setTime(selectedDate);
-        }
+        // Define a data selecionada como padrão no picker
+        long selectedDateMillis = (selectedDate != null)
+                ? selectedDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                : Instant.now().toEpochMilli();
+    }
 
         MaterialDatePicker<Long> materialDatePicker = MaterialDatePicker.Builder.datePicker()
                 .setSelection(calendar.getTimeInMillis())
@@ -1408,15 +1416,17 @@ public class LoyaltyCardEditActivity extends CatimaAppCompatActivity implements 
     }
 
     private long getDefaultMinDateOfDatePicker() {
-        Calendar minDateCalendar = Calendar.getInstance();
-        minDateCalendar.set(1970, 0, 1);
-        return minDateCalendar.getTimeInMillis();
+        return LocalDateTime.of(1970, 1, 1, 0, 0)
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli();
     }
 
     private long getDefaultMaxDateOfDatePicker() {
-        Calendar maxDateCalendar = Calendar.getInstance();
-        maxDateCalendar.set(2100, 11, 31);
-        return maxDateCalendar.getTimeInMillis();
+        return LocalDateTime.of(2100, 12, 31, 0, 0)
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli();
     }
 
     private void doSave() {

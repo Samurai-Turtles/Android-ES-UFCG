@@ -78,7 +78,6 @@ import java.text.NumberFormat;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Currency;
 import java.util.Date;
@@ -459,15 +458,8 @@ public class Utils {
         return expiryDate.before(getStartOfToday().getTime());
     }
 
-    static private Calendar getStartOfToday() {
-        // today
-        Calendar date = new GregorianCalendar();
-        // reset hour, minutes, seconds and millis
-        date.set(Calendar.HOUR_OF_DAY, 0);
-        date.set(Calendar.MINUTE, 0);
-        date.set(Calendar.SECOND, 0);
-        date.set(Calendar.MILLISECOND, 0);
-        return date;
+    static private LocalDateTime getStartOfToday() {
+        return LocalDateTime.now().toLocalDate().atStartOfDay();
     }
 
     static public String formatBalance(Context context, BigDecimal value, Currency currency) {

@@ -10,7 +10,6 @@ import androidx.core.text.HtmlCompat;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 
 public class AboutContent {
@@ -44,7 +43,7 @@ public class AboutContent {
     }
 
     public int getCurrentYear() {
-        return Calendar.getInstance().get(Calendar.YEAR);
+        return LocalDateTime.now().getYear();
     }
 
     public String getCopyright() {
