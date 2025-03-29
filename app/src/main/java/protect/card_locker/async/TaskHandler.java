@@ -3,7 +3,7 @@ package protect.card_locker.async;
 import android.os.Handler;
 import android.os.Looper;
 
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.LinkedList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -28,14 +28,14 @@ public class TaskHandler {
         EXPORT
     }
 
-    HashMap<TYPE, ThreadPoolExecutor> executors = generateExecutors();
+    EnumMap<TYPE, ThreadPoolExecutor> executors = generateExecutors();
 
-    final private HashMap<TYPE, LinkedList<Future<?>>> taskList = new HashMap<>();
+    private final EnumMap<TYPE, LinkedList<Future<?>>> taskList = new EnumMap<>(TYPE.class);
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
 
-    private HashMap<TYPE, ThreadPoolExecutor> generateExecutors() {
-        HashMap<TYPE, ThreadPoolExecutor> initExecutors = new HashMap<>();
+    private EnumMap<TYPE, ThreadPoolExecutor> generateExecutors() {
+        EnumMap<TYPE, ThreadPoolExecutor> initExecutors = new EnumMap<>(TYPE.class);
         for (TYPE type : TYPE.values()) {
             replaceExecutor(initExecutors, type, false, false);
         }
@@ -50,7 +50,7 @@ public class TaskHandler {
      * @param flushOld  attempt shutdown
      * @param waitOnOld wait for Termination
      */
-    private void replaceExecutor(HashMap<TYPE, ThreadPoolExecutor> executors, TYPE type, Boolean flushOld, Boolean waitOnOld) {
+    private void replaceExecutor(EnumMap<TYPE, ThreadPoolExecutor> executors, TYPE type, Boolean flushOld, Boolean waitOnOld) {
         ThreadPoolExecutor oldExecutor = executors.get(type);
         if (oldExecutor != null) {
             if (flushOld) {
