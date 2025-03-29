@@ -16,6 +16,7 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
@@ -71,40 +72,8 @@ public class ImportExportActivity extends CatimaAppCompatActivity {
         }
 
         // would use ActivityResultContracts.CreateDocument() but mime type cannot be set
-        fileCreateLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-            Intent intent = result.getData();
-            if (intent == null) {
-                Log.e(TAG, "Activity returned NULL data");
-                return;
-            }
-            Uri uri = intent.getData();
-            if (uri == null) {
-                Log.e(TAG, "Activity returned NULL uri");
-                return;
-            }
-            // Running this in a thread prevents Android from throwing a NetworkOnMainThreadException for large files
-            // FIXME: This is still suboptimal, because showing that the export started is delayed until the network request finishes
-            new Thread() {
-                @Override
-                public void run() {
-                    try {
-                        OutputStream writer = getContentResolver().openOutputStream(uri);
-                        Log.d(TAG, "Starting file export with: " + result);
-                        startExport(writer, uri, exportPassword.toCharArray(), true);
-                    } catch (IOException e) {
-                        Log.e(TAG, "Failed to export file: " + result, e);
-                        onExportComplete(new ImportExportResult(ImportExportResultType.GenericFailure, result.toString()), uri);
-                    }
-                }
-            }.start();
-        });
-        fileOpenLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), result -> {
-            if (result == null) {
-                Log.e(TAG, "Activity returned NULL data");
-                return;
-            }
-            openFileForImport(result, null);
-        });
+        fileCreateLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), this::handleExportActivityResult);
+        fileOpenLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), this::validateResult);
         filePickerLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             Intent intent = result.getData();
             if (intent == null) {
@@ -126,37 +95,7 @@ public class ImportExportActivity extends CatimaAppCompatActivity {
         intentCreateDocumentAction.putExtra(Intent.EXTRA_TITLE, "catima.zip");
 
         Button exportButton = binding.exportButton;
-        exportButton.setOnClickListener(v -> {
-            AlertDialog.Builder builder = new MaterialAlertDialogBuilder(ImportExportActivity.this);
-            builder.setTitle(R.string.exportPassword);
-
-            FrameLayout container = new FrameLayout(ImportExportActivity.this);
-
-            final TextInputLayout textInputLayout = new TextInputLayout(ImportExportActivity.this);
-            textInputLayout.setEndIconMode(TextInputLayout.END_ICON_PASSWORD_TOGGLE);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            params.setMargins(50, 10, 50, 0);
-            textInputLayout.setLayoutParams(params);
-
-            final EditText input = new EditText(ImportExportActivity.this);
-            input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-            input.setHint(R.string.exportPasswordHint);
-
-            textInputLayout.addView(input);
-            container.addView(textInputLayout);
-            builder.setView(container);
-            builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
-                exportPassword = input.getText().toString();
-                try {
-                    fileCreateLauncher.launch(intentCreateDocumentAction);
-                } catch (ActivityNotFoundException e) {
-                    Toast.makeText(getApplicationContext(), R.string.failedOpeningFileManager, Toast.LENGTH_LONG).show();
-                    Log.e(TAG, "No activity found to handle intent", e);
-                }
-            });
-            builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> dialogInterface.cancel());
-            builder.show();
-        });
+        exportButton.setOnClickListener(v -> showExportPasswordInputDialog(intentCreateDocumentAction));
 
         // Check that there is a file manager available
         Button importFilesystem = binding.importOptionFilesystemButton;
@@ -169,6 +108,78 @@ public class ImportExportActivity extends CatimaAppCompatActivity {
         // FIXME: The importer/exporter is currently quite broken
         // To prevent the screen from turning off during import/export and some devices killing Catima as it's no longer foregrounded, force the screen to stay on here
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    }
+
+    public void handleExportActivityResult(ActivityResult result) {
+        Intent intent = result.getData();
+        if (intent == null) {
+            Log.e(TAG, "Activity returned NULL data");
+            return;
+        }
+        Uri uri = intent.getData();
+        if (uri == null) {
+            Log.e(TAG, "Activity returned NULL uri");
+            return;
+        }
+        // Running this in a thread prevents Android from throwing a NetworkOnMainThreadException for large files
+        // FIXME: This is still suboptimal, because showing that the export started is delayed until the network request finishes
+        new Thread() {
+            @Override
+            public void run() {
+                try {
+                    OutputStream writer = getContentResolver().openOutputStream(uri);
+                    Log.d(TAG, "Starting file export with: " + result);
+                    startExport(writer, uri, exportPassword.toCharArray(), true);
+                } catch (IOException e) {
+                    Log.e(TAG, "Failed to export file: " + result, e);
+                    onExportComplete(new ImportExportResult(ImportExportResultType.GenericFailure, result.toString()), uri);
+                }
+            }
+        }.start();
+    }
+
+    private void validateResult(Uri result) {
+        if (result == null) {
+            Log.e(TAG, "Activity returned NULL data");
+            return;
+        }
+        openFileForImport(result, null);
+    }
+
+    private void showExportPasswordInputDialog(Intent intentCreateDocumentAction) {
+        AlertDialog.Builder builder = new MaterialAlertDialogBuilder(ImportExportActivity.this);
+        builder.setTitle(R.string.exportPassword);
+
+        FrameLayout container = new FrameLayout(ImportExportActivity.this);
+
+        final TextInputLayout textInputLayout = new TextInputLayout(ImportExportActivity.this);
+        textInputLayout.setEndIconMode(TextInputLayout.END_ICON_PASSWORD_TOGGLE);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.setMargins(50, 10, 50, 0);
+        textInputLayout.setLayoutParams(params);
+
+        final EditText input = new EditText(ImportExportActivity.this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        input.setHint(R.string.exportPasswordHint);
+
+        textInputLayout.addView(input);
+        container.addView(textInputLayout);
+        builder.setView(container);
+        builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
+            createPositiveButton(input, intentCreateDocumentAction);
+        });
+        builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> dialogInterface.cancel());
+        builder.show();
+    }
+
+    private void createPositiveButton(EditText input, Intent intentCreateDocumentAction) {
+        exportPassword = input.getText().toString();
+        try {
+            fileCreateLauncher.launch(intentCreateDocumentAction);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(getApplicationContext(), R.string.failedOpeningFileManager, Toast.LENGTH_LONG).show();
+            Log.e(TAG, "No activity found to handle intent", e);
+        }
     }
 
     private void openFileForImport(Uri uri, char[] password) {
@@ -208,69 +219,73 @@ public class ImportExportActivity extends CatimaAppCompatActivity {
         AlertDialog.Builder builder = new MaterialAlertDialogBuilder(this);
         builder.setTitle(R.string.chooseImportType)
                 .setItems(importOptions.toArray(new CharSequence[importOptions.size()]), (dialog, which) -> {
-                    switch (which) {
-                        // Catima
-                        case 0:
-                            importAlertTitle = getString(R.string.importCatima);
-                            importAlertMessage = getString(R.string.importCatimaMessage);
-                            importDataFormat = DataFormat.Catima;
-                            break;
-                        // Fidme
-                        case 1:
-                            importAlertTitle = getString(R.string.importFidme);
-                            importAlertMessage = getString(R.string.importFidmeMessage);
-                            importDataFormat = DataFormat.Fidme;
-                            break;
-                        // Loyalty Card Keychain
-                        case 2:
-                            importAlertTitle = getString(R.string.importLoyaltyCardKeychain);
-                            importAlertMessage = getString(R.string.importLoyaltyCardKeychainMessage);
-                            importDataFormat = DataFormat.Catima;
-                            break;
-                        // Stocard
-                        case 3:
-                            importAlertTitle = getString(R.string.importStocard);
-                            importAlertMessage = getString(R.string.importStocardMessage);
-                            importDataFormat = DataFormat.Stocard;
-                            break;
-                        // Voucher Vault
-                        case 4:
-                            importAlertTitle = getString(R.string.importVoucherVault);
-                            importAlertMessage = getString(R.string.importVoucherVaultMessage);
-                            importDataFormat = DataFormat.VoucherVault;
-                            break;
-                        default:
-                            throw new IllegalArgumentException("Unknown DataFormat");
-                    }
-
-                    if (fileData != null) {
-                        openFileForImport(fileData, null);
-                        return;
-                    }
-
-                    new MaterialAlertDialogBuilder(this)
-                            .setTitle(importAlertTitle)
-                            .setMessage(importAlertMessage)
-                            .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    try {
-                                        if (choosePicker) {
-                                            final Intent intentPickAction = new Intent(Intent.ACTION_PICK);
-                                            filePickerLauncher.launch(intentPickAction);
-                                        } else {
-                                            fileOpenLauncher.launch("*/*");
-                                        }
-                                    } catch (ActivityNotFoundException e) {
-                                        Toast.makeText(getApplicationContext(), R.string.failedOpeningFileManager, Toast.LENGTH_LONG).show();
-                                        Log.e(TAG, "No activity found to handle intent", e);
-                                    }
-                                }
-                            })
-                            .setNegativeButton(R.string.cancel, null)
-                            .show();
+                    selectImportSource(which, choosePicker, fileData);
                 });
         builder.show();
+    }
+
+    private void selectImportSource(int which, boolean choosePicker, @Nullable Uri fileData) {
+        switch (which) {
+            // Catima
+            case 0:
+                importAlertTitle = getString(R.string.importCatima);
+                importAlertMessage = getString(R.string.importCatimaMessage);
+                importDataFormat = DataFormat.Catima;
+                break;
+            // Fidme
+            case 1:
+                importAlertTitle = getString(R.string.importFidme);
+                importAlertMessage = getString(R.string.importFidmeMessage);
+                importDataFormat = DataFormat.Fidme;
+                break;
+            // Loyalty Card Keychain
+            case 2:
+                importAlertTitle = getString(R.string.importLoyaltyCardKeychain);
+                importAlertMessage = getString(R.string.importLoyaltyCardKeychainMessage);
+                importDataFormat = DataFormat.Catima;
+                break;
+            // Stocard
+            case 3:
+                importAlertTitle = getString(R.string.importStocard);
+                importAlertMessage = getString(R.string.importStocardMessage);
+                importDataFormat = DataFormat.Stocard;
+                break;
+            // Voucher Vault
+            case 4:
+                importAlertTitle = getString(R.string.importVoucherVault);
+                importAlertMessage = getString(R.string.importVoucherVaultMessage);
+                importDataFormat = DataFormat.VoucherVault;
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown DataFormat");
+        }
+
+        if (fileData != null) {
+            openFileForImport(fileData, null);
+            return;
+        }
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(importAlertTitle)
+                .setMessage(importAlertMessage)
+                .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        try {
+                            if (choosePicker) {
+                                final Intent intentPickAction = new Intent(Intent.ACTION_PICK);
+                                filePickerLauncher.launch(intentPickAction);
+                            } else {
+                                fileOpenLauncher.launch("*/*");
+                            }
+                        } catch (ActivityNotFoundException e) {
+                            Toast.makeText(getApplicationContext(), R.string.failedOpeningFileManager, Toast.LENGTH_LONG).show();
+                            Log.e(TAG, "No activity found to handle intent", e);
+                        }
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     private void startImport(final InputStream target, final Uri targetUri, final DataFormat dataFormat, final char[] password, final boolean closeWhenDone) {

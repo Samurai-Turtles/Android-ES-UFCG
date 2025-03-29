@@ -34,6 +34,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -418,18 +419,7 @@ public class LoyaltyCardEditActivity extends CatimaAppCompatActivity implements 
             @Override
             public void afterTextChanged(Editable s) {
                 ArrayList<String> currencyList = new ArrayList<>(currencies.keySet());
-                Collections.sort(currencyList, (o1, o2) -> {
-                    boolean o1ascii = o1.matches("^[^a-zA-Z]*$");
-                    boolean o2ascii = o2.matches("^[^a-zA-Z]*$");
-
-                    if (!o1ascii && o2ascii) {
-                        return 1;
-                    } else if (o1ascii && !o2ascii) {
-                        return -1;
-                    }
-
-                    return o1.compareTo(o2);
-                });
+                Collections.sort(currencyList, (o1, o2) -> compareCurrencies(o1, o2));
 
                 // Sort locale currencies on top
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -604,17 +594,7 @@ public class LoyaltyCardEditActivity extends CatimaAppCompatActivity implements 
         });
 
         // android 11: wanted to swap it to ActivityResultContracts.GetContent but then it shows a file browsers that shows image mime types, offering gallery in the file browser
-        mPhotoPickerLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-            if (result.getResultCode() == RESULT_OK) {
-                Intent intent = result.getData();
-                if (intent == null) {
-                    Log.d("photo picker", "photo picker returned without an intent");
-                    return;
-                }
-                Uri uri = intent.getData();
-                startCropperUri(uri);
-            }
-        });
+        mPhotoPickerLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), this::validateResult);
 
         mCardIdAndBarCodeEditorLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             if (result.getResultCode() == RESULT_OK) {
@@ -685,6 +665,31 @@ public class LoyaltyCardEditActivity extends CatimaAppCompatActivity implements 
                 askBeforeQuitIfChanged();
             }
         });
+    }
+
+    public int compareCurrencies(String o1, String o2) {
+        boolean o1ascii = o1.matches("^[^a-zA-Z]*$");
+        boolean o2ascii = o2.matches("^[^a-zA-Z]*$");
+
+        if (!o1ascii && o2ascii) {
+            return 1;
+        } else if (o1ascii && !o2ascii) {
+            return -1;
+        }
+
+        return o1.compareTo(o2);
+    }
+
+    public void validateResult(ActivityResult result) {
+        if (result.getResultCode() == RESULT_OK) {
+            Intent intent = result.getData();
+            if (intent == null) {
+                Log.d("photo picker", "photo picker returned without an intent");
+                return;
+            }
+            Uri uri = intent.getData();
+            startCropperUri(uri);
+        }
     }
 
     private void selectTab(int index) {
@@ -1108,6 +1113,7 @@ public class LoyaltyCardEditActivity extends CatimaAppCompatActivity implements 
     }
 
 
+    
     private void takePhotoForCard(int type) {
         Uri photoURI = FileProvider.getUriForFile(LoyaltyCardEditActivity.this, BuildConfig.APPLICATION_ID, Utils.createTempFile(this, TEMP_CAMERA_IMAGE_NAME));
         viewModel.setRequestedImageType(type);

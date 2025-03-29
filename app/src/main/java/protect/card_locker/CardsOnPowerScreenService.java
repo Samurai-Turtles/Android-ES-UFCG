@@ -40,62 +40,66 @@ public class CardsOnPowerScreenService extends ControlsProviderService {
     @Override
     public Flow.Publisher<Control> createPublisherForAllAvailable() {
         Cursor loyaltyCardCursor = DBHelper.getLoyaltyCardCursor(mDatabase, DBHelper.LoyaltyCardArchiveFilter.Unarchived);
-        return subscriber -> {
-            while (loyaltyCardCursor.moveToNext()) {
-                LoyaltyCard card = LoyaltyCard.fromCursor(this, loyaltyCardCursor);
-                Intent openIntent = new Intent(this, LoyaltyCardViewActivity.class)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        .putExtra(LoyaltyCardViewActivity.BUNDLE_ID, card.id);
-                PendingIntent pendingIntent = PendingIntent.getActivity(getBaseContext(), card.id, openIntent, PendingIntent.FLAG_IMMUTABLE);
-                subscriber.onNext(
-                        new Control.StatelessBuilder(PREFIX + card.id, pendingIntent)
-                                .setControlId(PREFIX + card.id)
-                                .setTitle(card.store)
-                                .setDeviceType(DeviceTypes.TYPE_GENERIC_OPEN_CLOSE)
-                                .setSubtitle(card.note)
-                                .setCustomIcon(Icon.createWithBitmap(getIcon(this, card)))
-                                .build()
-                );
-            }
-            subscriber.onComplete();
-        };
+        return subscriber -> createLoyaltyCardControls(subscriber, loyaltyCardCursor);
+    }
+
+    private void createLoyaltyCardControls(Flow.Subscriber<? super Control> subscriber, Cursor loyaltyCardCursor) {
+        while (loyaltyCardCursor.moveToNext()) {
+            LoyaltyCard card = LoyaltyCard.fromCursor(this, loyaltyCardCursor);
+            Intent openIntent = new Intent(this, LoyaltyCardViewActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    .putExtra(LoyaltyCardViewActivity.BUNDLE_ID, card.id);
+            PendingIntent pendingIntent = PendingIntent.getActivity(getBaseContext(), card.id, openIntent, PendingIntent.FLAG_IMMUTABLE);
+            subscriber.onNext(
+                    new Control.StatelessBuilder(PREFIX + card.id, pendingIntent)
+                            .setControlId(PREFIX + card.id)
+                            .setTitle(card.store)
+                            .setDeviceType(DeviceTypes.TYPE_GENERIC_OPEN_CLOSE)
+                            .setSubtitle(card.note)
+                            .setCustomIcon(Icon.createWithBitmap(getIcon(this, card)))
+                            .build()
+            );
+        }
+        subscriber.onComplete();
     }
 
     @NonNull
     @Override
     public Flow.Publisher<Control> createPublisherFor(@NonNull List<String> controlIds) {
-        return subscriber -> {
-            subscriber.onSubscribe(new NoOpSubscription());
-            for (String controlId : controlIds) {
-                Control control;
-                Integer cardId = this.controlIdToCardId(controlId);
-                LoyaltyCard card = DBHelper.getLoyaltyCard(this, mDatabase, cardId);
-                if (card != null) {
-                    Intent openIntent = new Intent(this, LoyaltyCardViewActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            .putExtra(LoyaltyCardViewActivity.BUNDLE_ID, card.id);
-                    PendingIntent pendingIntent = PendingIntent.getActivity(getBaseContext(), card.id, openIntent, PendingIntent.FLAG_IMMUTABLE);
-                    control = new Control.StatefulBuilder(controlId, pendingIntent)
-                            .setTitle(card.store)
-                            .setDeviceType(DeviceTypes.TYPE_GENERIC_OPEN_CLOSE)
-                            .setSubtitle(card.note)
-                            .setStatus(Control.STATUS_OK)
-                            .setControlTemplate(new StatelessTemplate(controlId))
-                            .setCustomIcon(Icon.createWithBitmap(getIcon(this, card)))
-                            .build();
-                } else {
-                    Intent mainScreenIntent = new Intent(this, MainActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    PendingIntent pendingIntent = PendingIntent.getActivity(getBaseContext(), -1, mainScreenIntent, PendingIntent.FLAG_IMMUTABLE);
-                    control = new Control.StatefulBuilder(controlId, pendingIntent)
-                            .setStatus(Control.STATUS_NOT_FOUND)
-                            .build();
-                }
-                Log.d(TAG, "Dispatching widget " + controlId);
-                subscriber.onNext(control);
+        return subscriber -> createLoyaltyCardControlsById(subscriber, controlIds);
+    }
+
+    private void createLoyaltyCardControlsById(Flow.Subscriber<? super Control> subscriber, List<String> controlIds) {
+        subscriber.onSubscribe(new NoOpSubscription());
+        for (String controlId : controlIds) {
+            Control control;
+            Integer cardId = CardsOnPowerScreenService.this.controlIdToCardId(controlId);
+            LoyaltyCard card = DBHelper.getLoyaltyCard(CardsOnPowerScreenService.this, mDatabase, cardId);
+            if (card != null) {
+                Intent openIntent = new Intent(CardsOnPowerScreenService.this, LoyaltyCardViewActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        .putExtra(LoyaltyCardViewActivity.BUNDLE_ID, card.id);
+                PendingIntent pendingIntent = PendingIntent.getActivity(CardsOnPowerScreenService.this.getBaseContext(), card.id, openIntent, PendingIntent.FLAG_IMMUTABLE);
+                control = new Control.StatefulBuilder(controlId, pendingIntent)
+                        .setTitle(card.store)
+                        .setDeviceType(DeviceTypes.TYPE_GENERIC_OPEN_CLOSE)
+                        .setSubtitle(card.note)
+                        .setStatus(Control.STATUS_OK)
+                        .setControlTemplate(new StatelessTemplate(controlId))
+                        .setCustomIcon(Icon.createWithBitmap(CardsOnPowerScreenService.this.getIcon(CardsOnPowerScreenService.this, card)))
+                        .build();
+            } else {
+                Intent mainScreenIntent = new Intent(CardsOnPowerScreenService.this, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                PendingIntent pendingIntent = PendingIntent.getActivity(CardsOnPowerScreenService.this.getBaseContext(), -1, mainScreenIntent, PendingIntent.FLAG_IMMUTABLE);
+                control = new Control.StatefulBuilder(controlId, pendingIntent)
+                        .setStatus(Control.STATUS_NOT_FOUND)
+                        .build();
             }
-            subscriber.onComplete();
-        };
+            Log.d(TAG, "Dispatching widget " + controlId);
+            subscriber.onNext(control);
+        }
+        subscriber.onComplete();
     }
 
     private Bitmap getIcon(Context context, LoyaltyCard loyaltyCard) {
