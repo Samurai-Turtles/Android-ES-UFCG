@@ -60,6 +60,7 @@ import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.multi.GenericMultipleBarcodeReader;
 import com.google.zxing.multi.MultipleBarcodeReader;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -838,7 +839,7 @@ public class Utils {
 
     public static File copyToTempFile(Context context, InputStream input, String name) throws IOException {
         File file = createTempFile(context, name);
-        try (input; FileOutputStream out = new FileOutputStream(file)) {
+        try (input; BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(file))) {
             byte[] buf = new byte[4096];
             int len;
             while ((len = input.read(buf)) != -1) {
@@ -850,7 +851,7 @@ public class Utils {
 
     public static String saveTempImage(Context context, Bitmap in, String name, Bitmap.CompressFormat format) {
         File image = createTempFile(context, name);
-        try (FileOutputStream out = new FileOutputStream(image)) {
+        try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(image))) {
             in.compress(format, 100, out);
             return image.getAbsolutePath();
         } catch (IOException e) {
