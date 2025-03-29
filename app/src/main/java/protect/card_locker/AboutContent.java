@@ -130,18 +130,17 @@ public class AboutContent {
     }
 
     public Spanned getContributorInfo() {
-        StringBuilder contributorInfo = new StringBuilder();
-        contributorInfo.append(getCopyright());
-        contributorInfo.append("<br/><br/>");
-        contributorInfo.append(context.getString(R.string.app_copyright_old));
-        contributorInfo.append("<br/><br/>");
-        contributorInfo.append(String.format(context.getString(R.string.app_contributors), getContributors()));
-        contributorInfo.append("<br/><br/>");
-        contributorInfo.append(String.format(context.getString(R.string.app_libraries), getThirdPartyLibraries()));
-        contributorInfo.append("<br/><br/>");
-        contributorInfo.append(String.format(context.getString(R.string.app_resources), getUsedThirdPartyAssets()));
+        String contributorInfo = getCopyright() +
+                "<br/><br/>" +
+                context.getString(R.string.app_copyright_old) +
+                "<br/><br/>" +
+                String.format(context.getString(R.string.app_contributors), getContributors()) +
+                "<br/><br/>" +
+                String.format(context.getString(R.string.app_libraries), getThirdPartyLibraries()) +
+                "<br/><br/>" +
+                String.format(context.getString(R.string.app_resources), getUsedThirdPartyAssets());
 
-        return HtmlCompat.fromHtml(contributorInfo.toString(), HtmlCompat.FROM_HTML_MODE_COMPACT);
+        return HtmlCompat.fromHtml(contributorInfo, HtmlCompat.FROM_HTML_MODE_COMPACT);
     }
 
     public Spanned getHistoryInfo() {

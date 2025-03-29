@@ -121,11 +121,11 @@ public class FidmeImporter implements Importer {
 
         String combinedName = String.format("%s %s", firstName, lastName).trim();
 
-        StringBuilder noteBuilder = new StringBuilder();
-        if (!program.isEmpty()) noteBuilder.append(program).append('\n');
-        if (!addedAt.isEmpty()) noteBuilder.append(addedAt).append('\n');
-        if (!combinedName.isEmpty()) noteBuilder.append(combinedName).append('\n');
-        String note = noteBuilder.toString().trim();
+        String note = "";
+        if (!program.isEmpty()) note += program + '\n';
+        if (!addedAt.isEmpty()) note += addedAt + '\n';
+        if (!combinedName.isEmpty()) note += combinedName + '\n';
+        note = note.trim();
 
         // The ID is called reference
         String cardId = CSVHelpers.extractString("Reference", record, "");
