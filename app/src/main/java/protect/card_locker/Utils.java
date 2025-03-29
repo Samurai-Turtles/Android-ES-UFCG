@@ -1055,7 +1055,7 @@ public class Utils {
 
     public static String checksum(InputStream input) throws IOException {
         try {
-            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] buf = new byte[4096];
             int len;
             while ((len = input.read(buf)) != -1) {
