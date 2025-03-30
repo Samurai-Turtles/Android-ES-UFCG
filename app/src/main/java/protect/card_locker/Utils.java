@@ -572,7 +572,13 @@ public class Utils {
             return null;
         }
 
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+
+        // Rough estimation for image size with 32KB minimum buffer to avoid lots of resizing
+        int estimatedSize = Math.max((width * height), 32 * 1024);
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(estimatedSize);
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, bos);
         return bos.toByteArray();
     }

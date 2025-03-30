@@ -47,7 +47,7 @@ public class CatimaExporter implements Exporter {
         }
 
         // Generate CSV
-        ByteArrayOutputStream catimaOutputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream catimaOutputStream = new ByteArrayOutputStream(8 * 1024);
         OutputStreamWriter catimaOutputStreamWriter = new OutputStreamWriter(catimaOutputStream, StandardCharsets.UTF_8);
         writeCSV(context, database, catimaOutputStreamWriter);
 
