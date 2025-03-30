@@ -34,9 +34,8 @@ import protect.card_locker.Utils;
 public class CatimaExporter implements Exporter {
     public void exportData(Context context, SQLiteDatabase database, OutputStream output, char[] password) throws IOException, InterruptedException {
         // Necessary vars
-        int readLen;
+        int readLen = 0;
         byte[] readBuffer = new byte[InternalZipConstants.BUFF_SIZE];
-
         // Create zip output stream
         ZipOutputStream zipOutputStream;
 
@@ -45,12 +44,18 @@ public class CatimaExporter implements Exporter {
         } else {
             zipOutputStream = new ZipOutputStream(output);
         }
-
         // Generate CSV
+        generateCSV(zipOutputStream, context, database, password, readBuffer, readLen);
+        // Loop over all cards again
+        loopOverAllCards(zipOutputStream, context, database, password, readBuffer, readLen);
+
+        zipOutputStream.close();
+    }
+
+    private void generateCSV(ZipOutputStream zipOutputStream, Context context, SQLiteDatabase database, char[] password, byte[] readBuffer, int readLen) throws IOException, InterruptedException {
         ByteArrayOutputStream catimaOutputStream = new ByteArrayOutputStream(8 * 1024);
         OutputStreamWriter catimaOutputStreamWriter = new OutputStreamWriter(catimaOutputStream, StandardCharsets.UTF_8);
         writeCSV(context, database, catimaOutputStreamWriter);
-
         // Add CSV to zip file
         ZipParameters csvZipParameters = createZipParameters("catima.csv", password);
         zipOutputStream.putNextEntry(csvZipParameters);
@@ -59,30 +64,24 @@ public class CatimaExporter implements Exporter {
             zipOutputStream.write(readBuffer, 0, readLen);
         }
         zipOutputStream.closeEntry();
+    }
 
-        // Loop over all cards again
+    private void loopOverAllCards(ZipOutputStream zipOutputStream, Context context, SQLiteDatabase database, char[] password, byte[] readBuffer, int readLen) throws IOException {
         Cursor cardCursor = DBHelper.getLoyaltyCardCursor(database);
         while (cardCursor.moveToNext()) {
-            // For each card
             LoyaltyCard card = LoyaltyCard.fromCursor(context, cardCursor);
-
-            // For each image
             for (ImageLocationType imageLocationType : ImageLocationType.values()) {
-                // If it exists, add to the .zip file
                 Bitmap image = card.getImageForImageLocationType(context, imageLocationType);
                 if (image != null) {
                     ZipParameters imageZipParameters = createZipParameters(Utils.getCardImageFileName(card.id, imageLocationType), password);
                     zipOutputStream.putNextEntry(imageZipParameters);
                     InputStream imageInputStream = new ByteArrayInputStream(Utils.bitmapToByteArray(image));
-                    while ((readLen = imageInputStream.read(readBuffer)) != -1) {
+                    while ((readLen = imageInputStream.read(readBuffer)) != -1)
                         zipOutputStream.write(readBuffer, 0, readLen);
-                    }
                     zipOutputStream.closeEntry();
                 }
             }
         }
-
-        zipOutputStream.close();
     }
 
     private ZipParameters createZipParameters(String fileName, char[] password) {
@@ -95,7 +94,8 @@ public class CatimaExporter implements Exporter {
         return zipParameters;
     }
 
-    private void writeCSV(Context context, SQLiteDatabase database, OutputStreamWriter output) throws IOException, InterruptedException {
+    private void writeCSV(Context context, SQLiteDatabase database, OutputStreamWriter output) throws
+            IOException, InterruptedException {
         CSVPrinter printer = new CSVPrinter(output, CSVFormat.RFC4180);
 
         // Print the version

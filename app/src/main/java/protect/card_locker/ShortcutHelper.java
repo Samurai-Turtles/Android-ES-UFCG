@@ -126,22 +126,8 @@ class ShortcutHelper {
     }
 
     static ShortcutInfoCompat.Builder createShortcutBuilder(Context context, LoyaltyCard loyaltyCard) {
-        Intent intent = new Intent(context, LoyaltyCardViewActivity.class);
-        intent.setAction(Intent.ACTION_MAIN);
-        // Prevent instances of the view activity from piling up; if one exists let this
-        // one replace it.
-        intent.setFlags(intent.getFlags() | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        final Bundle bundle = new Bundle();
-        bundle.putInt(LoyaltyCardViewActivity.BUNDLE_ID, loyaltyCard.id);
-        intent.putExtras(bundle);
-
-        Bitmap iconBitmap = loyaltyCard.getImageThumbnail(context);
-        if (iconBitmap == null) {
-            iconBitmap = Utils.generateIcon(context, loyaltyCard, true).getLetterTile();
-        } else {
-            iconBitmap = createAdaptiveBitmap(iconBitmap, Utils.needsDarkForeground(Utils.getHeaderColor(context, loyaltyCard)) ? Color.BLACK : Color.WHITE);
-        }
-
+        Intent intent = createShortcutIntent(context, loyaltyCard);
+        Bitmap iconBitmap = getShortcutIcon(context, loyaltyCard);
         IconCompat icon = IconCompat.createWithAdaptiveBitmap(iconBitmap);
 
         return new ShortcutInfoCompat.Builder(context, Integer.toString(loyaltyCard.id))
@@ -149,5 +135,29 @@ class ShortcutHelper {
                 .setLongLabel(loyaltyCard.store)
                 .setIntent(intent)
                 .setIcon(icon);
+    }
+
+    private static Intent createShortcutIntent(Context context, LoyaltyCard loyaltyCard) {
+        Intent intent = new Intent(context, LoyaltyCardViewActivity.class);
+        intent.setAction(Intent.ACTION_MAIN);
+        intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+        final Bundle bundle = new Bundle();
+        bundle.putInt(LoyaltyCardViewActivity.BUNDLE_ID, loyaltyCard.id);
+        intent.putExtras(bundle);
+
+        return intent;
+    }
+
+    private static Bitmap getShortcutIcon(Context context, LoyaltyCard loyaltyCard) {
+        Bitmap iconBitmap = loyaltyCard.getImageThumbnail(context);
+        if (iconBitmap == null) {
+            return Utils.generateIcon(context, loyaltyCard, true).getLetterTile();
+        }
+
+        int foregroundColor = Utils.needsDarkForeground(Utils.getHeaderColor(context, loyaltyCard))
+                ? Color.BLACK
+                : Color.WHITE;
+        return createAdaptiveBitmap(iconBitmap, foregroundColor);
     }
 }

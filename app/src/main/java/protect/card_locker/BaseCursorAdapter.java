@@ -60,17 +60,25 @@ public abstract class BaseCursorAdapter<V extends RecyclerView.ViewHolder> exten
         if (inputCursor == mCursor) {
             return;
         }
-
         if (inputCursor != null) {
-            mCursor = inputCursor;
-            mRowIDColumn = mCursor.getColumnIndex(mRowIDColumnName);
-            mDataValid = true;
-            notifyDataSetChanged();
+            handleNewCursor(inputCursor);
         } else {
-            notifyItemRangeRemoved(0, getItemCount());
-            mCursor = null;
-            mRowIDColumn = -1;
-            mDataValid = false;
+            handleNullCursor();
         }
     }
+
+    private void handleNewCursor(Cursor inputCursor) {
+        mCursor = inputCursor;
+        mRowIDColumn = mCursor.getColumnIndex(mRowIDColumnName);
+        mDataValid = true;
+        notifyDataSetChanged();
+    }
+
+    private void handleNullCursor() {
+        notifyItemRangeRemoved(0, getItemCount());
+        mCursor = null;
+        mRowIDColumn = -1;
+        mDataValid = false;
+    }
+
 }

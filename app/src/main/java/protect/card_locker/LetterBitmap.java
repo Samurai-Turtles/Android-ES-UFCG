@@ -50,53 +50,51 @@ class LetterBitmap {
      */
     public LetterBitmap(Context context, String displayName, String key, int tileLetterFontSize,
                         int width, int height, Integer backgroundColor, Integer textColor) {
+        TextPaint paint = createTextPaint(tileLetterFontSize, textColor);
+        mColor = (backgroundColor != null) ? backgroundColor : getDefaultColor(context, key);
+        mBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+        String firstChar = determineFirstChar(displayName, paint);
+
+        Log.d("LetterBitmap", "using sequence " + firstChar + " to render first char which has length " + firstChar.length());
+
+        drawLetterOnBitmap(firstChar, width, height, paint);
+    }
+
+    private TextPaint createTextPaint(int fontSize, Integer textColor) {
         TextPaint paint = new TextPaint();
-
-        if (textColor != null) {
-            paint.setColor(textColor);
-        } else {
-            paint.setColor(Color.WHITE);
-        }
-
+        paint.setColor((textColor != null) ? textColor : Color.WHITE);
         paint.setTextAlign(Paint.Align.CENTER);
         paint.setAntiAlias(true);
-        paint.setTextSize(tileLetterFontSize);
+        paint.setTextSize(fontSize);
         paint.setTypeface(Typeface.defaultFromStyle(Typeface.BOLD));
+        return paint;
+    }
 
-        if (backgroundColor == null) {
-            mColor = getDefaultColor(context, key);
-        } else {
-            mColor = backgroundColor;
-        }
-
-        mBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+    private String determineFirstChar(String displayName, TextPaint paint) {
         String firstChar = displayName.substring(0, 1).toUpperCase();
         int firstCharEnd = 2;
         while (firstCharEnd <= displayName.length()) {
-            // Test for the longest render-able string
-            // But ignore containing only a-Z0-9 to not render things like ffi as a single character
             String test = displayName.substring(0, firstCharEnd);
             if (!isAlphabetical(test) && PaintCompat.hasGlyph(paint, test)) {
                 firstChar = test;
             }
             firstCharEnd++;
         }
+        return firstChar;
+    }
 
-        Log.d("LetterBitmap", "using sequence " + firstChar + " to render first char which has length " + firstChar.length());
-
-        final Canvas c = new Canvas();
+    private void drawLetterOnBitmap(String firstChar, int width, int height, TextPaint paint) {
+        Canvas c = new Canvas();
         c.setBitmap(mBitmap);
         c.drawColor(mColor);
 
         Rect bounds = new Rect();
         paint.getTextBounds(firstChar, 0, firstChar.length(), bounds);
         c.drawText(firstChar,
-                0, firstChar.length(),
-                width / 2.0f, (height - (bounds.bottom + bounds.top)) / 2.0f
-                , paint);
-
+                width / 2.0f, (height - (bounds.bottom + bounds.top)) / 2.0f,
+                paint);
     }
-
     /**
      * @return A {@link Bitmap} that contains a letter used in the English
      * alphabet or digit, if there is no letter or digit available, a
