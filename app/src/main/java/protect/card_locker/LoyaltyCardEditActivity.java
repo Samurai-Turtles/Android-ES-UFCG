@@ -58,6 +58,7 @@ import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.tabs.TabLayout;
+import com.jaredrummler.android.colorpicker.BuildConfig;
 import com.jaredrummler.android.colorpicker.ColorPickerDialog;
 import com.jaredrummler.android.colorpicker.ColorPickerDialogListener;
 import com.yalantis.ucrop.UCrop;
@@ -949,11 +950,11 @@ public class LoyaltyCardEditActivity extends CatimaAppCompatActivity implements 
                     }
                     showDatePicker(
                             loyaltyCardField,
-                            (Date) dateField.getTag(),
+                            (LocalDateTime) dateField.getTag(),
                             // if the expiry date is being set, set date picker's minDate to the 'valid from' date
-                            loyaltyCardField == LoyaltyCardField.expiry ? (Date) validFromField.getTag() : null,
+                            loyaltyCardField == LoyaltyCardField.expiry ? (LocalDateTime) validFromField.getTag() : null,
                             // if the 'valid from' date is being set, set date picker's maxDate to the expiry date
-                            loyaltyCardField == LoyaltyCardField.validFrom ? (Date) expiryField.getTag() : null
+                            loyaltyCardField == LoyaltyCardField.validFrom ? (LocalDateTime) expiryField.getTag() : null
                     );
                 }
             }
@@ -1357,10 +1358,9 @@ public class LoyaltyCardEditActivity extends CatimaAppCompatActivity implements 
         long selectedDateMillis = (selectedDate != null)
                 ? selectedDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
                 : Instant.now().toEpochMilli();
-    }
 
         MaterialDatePicker<Long> materialDatePicker = MaterialDatePicker.Builder.datePicker()
-                .setSelection(calendar.getTimeInMillis())
+                .setSelection(selectedDateMillis)
                 .setCalendarConstraints(calendarConstraints)
                 .build();
 
@@ -1422,14 +1422,14 @@ public class LoyaltyCardEditActivity extends CatimaAppCompatActivity implements 
     }
 
     private long getDefaultMinDateOfDatePicker() {
-        return LocalDateTime.of(1970, 1, 1, 0, 0)
+        return LocalDateTime.of(1970, 1, 1, 0, 0, 0)
                 .atZone(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli();
     }
 
     private long getDefaultMaxDateOfDatePicker() {
-        return LocalDateTime.of(2100, 12, 31, 0, 0)
+        return LocalDateTime.of(2100, 12, 31, 23, 59, 59)
                 .atZone(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli();

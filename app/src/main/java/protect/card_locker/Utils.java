@@ -78,6 +78,9 @@ import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
 import java.text.DecimalFormat;
 import java.text.ParseException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Currency;
@@ -447,7 +450,7 @@ public class Utils {
 
     static public Boolean isNotYetValid(Date validFromDate) {
         // The note in `hasExpired` does not apply here, since the bug was fixed before this feature was added.
-        return validFromDate.after(getStartOfToday().getTime());
+        return validFromDate.after(getStartOfToday());
     }
 
     static public Boolean hasExpired(Date expiryDate) {
@@ -456,11 +459,11 @@ public class Utils {
         // is not a problem for the way the comparison currently works, it's good to keep in mind such
         // dates may exist in the DB in case the comparison changes in the future and the new one relies
         // on both dates being set at 12:00 AM.
-        return expiryDate.before(getStartOfToday().getTime());
+        return expiryDate.before(getStartOfToday());
     }
 
-    static private LocalDateTime getStartOfToday() {
-        return LocalDateTime.now().toLocalDate().atStartOfDay();
+    static private Date getStartOfToday() {
+        return Date.from(LocalDate.now().atStartOfDay().atZone(ZoneId.systemDefault()).toInstant());
     }
 
     static public String formatBalance(Context context, BigDecimal value, Currency currency) {
